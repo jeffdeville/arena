@@ -39,8 +39,13 @@ defmodule Arena.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      # {:dep_from_hexpm, "~> 0.3.0"},
-      # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
+      # All optional: Arena's core stays dependency-free. Each integration guards
+      # its dep with `Code.ensure_loaded?/1` (runtime) or `if Code.ensure_loaded?`
+      # (compile-time, for the Credo checks), so a consumer only needs the dep for
+      # the integration they actually use; production builds without them are fine.
+      {:mox, "~> 1.0", optional: true},
+      {:telemetry, "~> 1.0", optional: true},
+      {:credo, "~> 1.7", optional: true, runtime: false}
     ]
   end
 end
