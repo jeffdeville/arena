@@ -9,10 +9,11 @@ defmodule Arena.TaskTest do
       config = Config.new(:test_task)
       Config.store(config)
 
-      task = ArenaTask.async(fn ->
-        # Config should be available in task
-        Config.current()
-      end)
+      task =
+        ArenaTask.async(fn ->
+          # Config should be available in task
+          Config.current()
+        end)
 
       result = Task.await(task)
 
@@ -26,9 +27,10 @@ defmodule Arena.TaskTest do
       config = Config.new(:test_task_callback, callbacks: [callback])
       Config.store(config)
 
-      task = ArenaTask.async(fn ->
-        :done
-      end)
+      task =
+        ArenaTask.async(fn ->
+          :done
+        end)
 
       Task.await(task)
 
@@ -40,9 +42,10 @@ defmodule Arena.TaskTest do
       config = Config.new(:test_task_result)
       Config.store(config)
 
-      task = ArenaTask.async(fn ->
-        {:ok, :result}
-      end)
+      task =
+        ArenaTask.async(fn ->
+          {:ok, :result}
+        end)
 
       assert {:ok, :result} = Task.await(task)
     end
@@ -62,12 +65,13 @@ defmodule Arena.TaskTest do
       config = Config.new(:test_task_args_config)
       Config.store(config)
 
-      task = ArenaTask.async(
-        fn arg ->
-          {arg, Config.current()}
-        end,
-        [:my_arg]
-      )
+      task =
+        ArenaTask.async(
+          fn arg ->
+            {arg, Config.current()}
+          end,
+          [:my_arg]
+        )
 
       {arg, task_config} = Task.await(task)
 
@@ -178,10 +182,11 @@ defmodule Arena.TaskTest do
       config = Config.new(:test_await_timeout)
       Config.store(config)
 
-      task = ArenaTask.async(fn ->
-        Process.sleep(50)
-        :done
-      end)
+      task =
+        ArenaTask.async(fn ->
+          Process.sleep(50)
+          :done
+        end)
 
       result = ArenaTask.await(task, 100)
       assert result == :done

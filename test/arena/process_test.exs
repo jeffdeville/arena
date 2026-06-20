@@ -38,7 +38,9 @@ defmodule Arena.ProcessTest do
     end
 
     def get_config(pid), do: GenServer.call(pid, :get_config)
-    def handle_call(:get_config, _from, {_state, config} = full_state), do: {:reply, config, full_state}
+
+    def handle_call(:get_config, _from, {_state, config} = full_state),
+      do: {:reply, config, full_state}
   end
 
   defmodule TestKillServer do
@@ -208,7 +210,8 @@ defmodule Arena.ProcessTest do
   describe "get_pid/1" do
     test "returns pid for global server" do
       config = Config.new(:test_get_pid_global)
-      Config.store(config)  # Store in test process
+      # Store in test process
+      Config.store(config)
       wrapped = Wrapped.new(config, :state)
 
       {:ok, pid} = GlobalServer.start_link(wrapped)
@@ -219,7 +222,8 @@ defmodule Arena.ProcessTest do
 
     test "returns pid for keyed server" do
       config = Config.new(:test_get_pid_keyed)
-      Config.store(config)  # Store in test process
+      # Store in test process
+      Config.store(config)
       wrapped = Wrapped.new(config, %{id: :target})
 
       {:ok, pid} = KeyedServer.start_link(wrapped)
@@ -240,7 +244,8 @@ defmodule Arena.ProcessTest do
   describe "alive?/1" do
     test "returns true for running process" do
       config = Config.new(:test_alive)
-      Config.store(config)  # Store in test process
+      # Store in test process
+      Config.store(config)
       wrapped = Wrapped.new(config, :state)
 
       {:ok, _pid} = GlobalServer.start_link(wrapped)
@@ -257,7 +262,8 @@ defmodule Arena.ProcessTest do
 
     test "returns false after process dies" do
       config = Config.new(:test_died)
-      Config.store(config)  # Store in test process
+      # Store in test process
+      Config.store(config)
       wrapped = Wrapped.new(config, :state)
 
       {:ok, pid} = GlobalServer.start_link(wrapped)
@@ -294,7 +300,8 @@ defmodule Arena.ProcessTest do
 
     test "die/1 accepts input and looks up pid" do
       config = Config.new(:test_kill_by_input)
-      Config.store(config)  # Store in test process
+      # Store in test process
+      Config.store(config)
       wrapped = Wrapped.new(config, :state)
 
       {:ok, _pid} = TestKillServer.start_link(wrapped)

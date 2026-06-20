@@ -182,12 +182,13 @@ defmodule Arena.ConfigTest do
     test "executes multiple callbacks in order" do
       parent = self()
 
-      config = Config.new(:my_test,
-        callbacks: [
-          {__MODULE__, :test_callback, [parent: parent, id: 1]},
-          {__MODULE__, :test_callback, [parent: parent, id: 2]}
-        ]
-      )
+      config =
+        Config.new(:my_test,
+          callbacks: [
+            {__MODULE__, :test_callback, [parent: parent, id: 1]},
+            {__MODULE__, :test_callback, [parent: parent, id: 2]}
+          ]
+        )
 
       Config.execute_callbacks(config)
 
@@ -226,16 +227,18 @@ defmodule Arena.ConfigTest do
 
   describe "root/1" do
     test "returns root owner from config" do
-      config = Config.new(:my_test)
-      |> Config.child(MyServer)
-      |> Config.child(:instance_1)
+      config =
+        Config.new(:my_test)
+        |> Config.child(MyServer)
+        |> Config.child(:instance_1)
 
       assert Config.root(config) == :my_test
     end
 
     test "0-arity version uses current()" do
-      config = Config.new(:my_test)
-      |> Config.child(MyServer)
+      config =
+        Config.new(:my_test)
+        |> Config.child(MyServer)
 
       Config.store(config)
 
@@ -251,17 +254,19 @@ defmodule Arena.ConfigTest do
     end
 
     test "converts hierarchical id to string" do
-      config = Config.new(:my_test)
-      |> Config.child(MyApp.Server)
-      |> Config.child(:instance_1)
+      config =
+        Config.new(:my_test)
+        |> Config.child(MyApp.Server)
+        |> Config.child(:instance_1)
 
       result = Config.to_string(config)
       assert result == "my_test/MyApp.Server/instance_1"
     end
 
     test "strips Elixir prefix from module names" do
-      config = Config.new(:my_test)
-      |> Config.child(String)
+      config =
+        Config.new(:my_test)
+        |> Config.child(String)
 
       result = Config.to_string(config)
       # Should not have "Elixir." prefix

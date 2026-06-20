@@ -8,6 +8,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `Arena.Integrations.Mox` — `setup(config, mocks: […])` adds a `Mox.allow/3`
+  callback so `:private`-mode Mox works from Arena-spawned processes at
+  `async: true` (no `set_mox_global`). Guarded by `Code.ensure_loaded?(Mox)`.
+- `Arena.Integrations.Telemetry` — `capture(events, to: pid)` attaches an
+  owner-scoped `:telemetry` handler that forwards events to the test process and
+  detaches on exit. Guarded by `Code.ensure_loaded?(:telemetry)`.
+- `Arena.Phoenix` — dependency-free seams for delivering the per-test config into
+  connected LiveView/Channel processes: `put_config/2` (ConnCase),
+  `Arena.Phoenix.LiveView` (`on_mount`), `store_from_socket/1` (channel join),
+  and `Arena.Phoenix.PubSub` (a per-test server resolver + `use` facade macro).
+- `Arena.Credo.Check.*` — four Credo checks enforcing correct usage
+  (`GenServerUsesArenaProcess`, `NoTestProcessSleep`, `NoGlobalMox`,
+  `NoApplicationPutEnvInTest`), each compiled only when Credo is available.
+- `Arena.Case` — `setup_isolation/2` + `wrap!/2`, a base-DataCase helper owning
+  the setup pipeline (store-before-spawn) and the `:arena_global` tripwire.
+- Docs: `llms.txt` (an agent-facing entry point following the llmstxt.org
+  convention), `docs/testing-phoenix.md` (testing LiveView & Channels — the
+  connected-process recipe and PubSub-isolation pitfalls),
+  `docs/http-boundary.md` (where Arena can't reach), and
+  `docs/integrations-roadmap.md` (the full integrations map). Wired into the hex
+  package `files` and linked from the README.
 - `ArenaApplication` — an async-safe drop-in for `Application.get_env/3`. Reads a
   per-test override from the current `Arena.Config` first (namespaced by
   `{app, key}`, mirroring `Application`'s own env), falling back to

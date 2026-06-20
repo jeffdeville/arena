@@ -228,7 +228,8 @@ defmodule Arena.Config do
   end
 
   def put(%__MODULE__{} = _config, key, _value) when key in @allowed_keys do
-    raise ArgumentError, "Cannot manually set protected key #{inspect(key)}. Use Config API functions."
+    raise ArgumentError,
+          "Cannot manually set protected key #{inspect(key)}. Use Config API functions."
   end
 
   def put(%__MODULE__{} = config, key, value) do
