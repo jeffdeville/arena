@@ -45,6 +45,7 @@ defmodule Arena.MixProject do
       # the integration they actually use; production builds without them are fine.
       {:mox, "~> 1.0", optional: true},
       {:telemetry, "~> 1.0", optional: true},
+      {:phoenix_pubsub, "~> 2.0", optional: true},
       {:credo, "~> 1.7", optional: true, runtime: false}
     ]
   end
