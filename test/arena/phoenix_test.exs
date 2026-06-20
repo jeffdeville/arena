@@ -9,7 +9,8 @@ defmodule Arena.PhoenixTest do
     :ok
   end
 
-  defp config(name \\ :phoenix_test), do: Arena.Config.new(:"#{name}_#{System.unique_integer([:positive])}")
+  defp config(name \\ :phoenix_test),
+    do: Arena.Config.new(:"#{name}_#{System.unique_integer([:positive])}")
 
   describe "put_config/2 + arena_config/1" do
     test "put_config stashes the config on conn.private and arena_config reads it back" do
@@ -113,7 +114,8 @@ defmodule Arena.PhoenixTest do
 
     test "falls back to the default in production (no config anywhere)" do
       # Run in a fresh process with no $callers config to be unambiguous.
-      assert spawn_and_get(fn -> Arena.Phoenix.PubSub.server(:GlobalDefault) end) == :GlobalDefault
+      assert spawn_and_get(fn -> Arena.Phoenix.PubSub.server(:GlobalDefault) end) ==
+               :GlobalDefault
     end
   end
 
@@ -152,6 +154,7 @@ defmodule Arena.PhoenixTest do
     parent = self()
     # plain spawn → no $callers entry, so no ancestor config is found
     spawn(fn -> send(parent, {:result, fun.()}) end)
+
     receive do
       {:result, r} -> r
     after

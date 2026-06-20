@@ -85,18 +85,33 @@ the per-test instance in tests, or the global one in prod.
 
 ## Integrations
 
+All optional deps are guarded (`Code.ensure_loaded?/1`), so the core is
+dependency-free and you only need the dep for the integration you use. See
+[docs/integrations-roadmap.md](docs/integrations-roadmap.md).
+
 - `Arena.Integrations.Ecto.setup(config, repo: Repo)` → adds the callback that
   `Ecto.Adapters.SQL.Sandbox.allow`s each wrapped child onto the test's
   connection. First thing to check on `DBConnection.OwnershipError`.
 - `Arena.Integrations.PubSub.setup(config, opts)` → starts a per-test
-  `Phoenix.PubSub` server (`start_supervised!`) and stores its name at the
-  `:pubsub_name` context key. Resolve the server from config in your
-  broadcast/subscribe calls.
+  `Phoenix.PubSub` server and stores its name at `:pubsub_name`. Resolve the
+  server from config in your broadcast/subscribe calls (see `Arena.Phoenix.PubSub`).
+- `Arena.Integrations.Mox.setup(config, mocks: […])` → `Mox.allow`s each wrapped
+  child onto the test's `:private`-mode expectations, so mocking works from
+  spawned processes at `async: true` (no `set_mox_global`).
+- `Arena.Integrations.Telemetry.capture(events, to: pid)` → owner-scoped
+  `:telemetry` handler forwarding events to the test, detached on exit.
+- `Arena.Phoenix` → LiveView `on_mount` / Channel / ConnCase seams + a per-test
+  PubSub server resolver. The recipe for isolating connected LiveView/Channel
+  tests. See [docs/testing-phoenix.md](docs/testing-phoenix.md).
+- `Arena.Credo.Check.*` → four Credo checks enforcing correct usage (must
+  `use Arena.Process`; no test `Process.sleep`/global Mox/`Application.put_env`).
+- `Arena.Case.setup_isolation/2` + `wrap!/2` → a base DataCase helper owning the
+  pipeline + the `:arena_global` tripwire.
 - `ArenaApplication.get_env/3` (+ `fetch_env/2`, `fetch_env!/2`, `put_env/3,4`,
-  `merge_env/3,4`) → async-safe drop-in for `Application.get_env/3`. Reads a
-  per-test override from `Arena.Config` (namespaced by `{app, key}`), else the
-  application env. Replaces `Application.put_env`-in-test (and the `async: false`
-  it forces). `merge_env` does a surgical partial override of a map/keyword value.
+  `merge_env/3,4`) → async-safe drop-in for `Application.get_env/3`. Per-test
+  override from `Arena.Config` (namespaced by `{app, key}`), else the application
+  env. Replaces `Application.put_env`-in-test. `merge_env` does a surgical partial
+  override of a map/keyword value.
 
 ## Optional
 

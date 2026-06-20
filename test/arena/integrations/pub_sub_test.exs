@@ -5,17 +5,23 @@ defmodule Arena.Integrations.PubSubTest do
   alias Arena.Integrations.PubSub
 
   describe "setup/2" do
-    test "raises error when Phoenix.PubSub is not available" do
-      # This will raise because we don't have Phoenix.PubSub as a dependency
-      assert_raise RuntimeError, ~r/Phoenix.PubSub is not available/, fn ->
-        config = Config.new(:my_test)
-        PubSub.setup(config)
-      end
+    # Phoenix.PubSub is now an optional dep, so the integration can be tested for real.
+    test "starts a per-test PubSub server and stores its name at :pubsub_name" do
+      config = Arena.setup(%{module: __MODULE__, test: :starts}) |> PubSub.setup()
+
+      name = Config.get(config, :pubsub_name)
+      assert is_atom(name) and name != nil
+      assert is_pid(Process.whereis(name)), "the per-test PubSub server must be running"
     end
 
-    # Note: We can't test the actual PubSub integration without adding Phoenix.PubSub
-    # as a dependency. In a real project using Arena, you would add Phoenix.PubSub
-    # and test this properly.
+    test "accepts a custom :name" do
+      config =
+        Arena.setup(%{module: __MODULE__, test: :custom})
+        |> PubSub.setup(name: :arena_pubsub_custom_name)
+
+      assert Config.get(config, :pubsub_name) == :arena_pubsub_custom_name
+      assert is_pid(Process.whereis(:arena_pubsub_custom_name))
+    end
   end
 
   test "module is documented" do

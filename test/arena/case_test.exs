@@ -4,7 +4,11 @@ defmodule Arena.CaseTest do
   alias Arena.Config
 
   defp tags(extra \\ %{}),
-    do: Map.merge(%{module: __MODULE__, test: :"t_#{System.unique_integer([:positive])}", async: true}, extra)
+    do:
+      Map.merge(
+        %{module: __MODULE__, test: :"t_#{System.unique_integer([:positive])}", async: true},
+        extra
+      )
 
   describe "setup_isolation/2" do
     test "builds a per-test config exposed under :config and :arena" do

@@ -14,9 +14,11 @@ Arena (Latin for "sand", from Roman amphitheater floors) provides a sandbox for 
 - **[`docs/testing-phoenix.md`](docs/testing-phoenix.md)** — testing **LiveView &
   Channels** with Arena: how the per-test config reaches the *connected* process,
   and why naive `Phoenix.PubSub` isolation silently loses messages.
-- **[`docs/integrations-roadmap.md`](docs/integrations-roadmap.md)** — existing
-  integrations and proposals for new ones (Mox bridge, Phoenix seams, Credo
-  checks, …).
+- **[`docs/http-boundary.md`](docs/http-boundary.md)** — where Arena can't reach
+  (real transports / outbound HTTP) and the patterns to use there.
+- **[`docs/integrations-roadmap.md`](docs/integrations-roadmap.md)** — the full
+  map of integrations (Ecto, PubSub, Mox, Telemetry, Phoenix, Credo checks,
+  Arena.Case, ArenaApplication) and what's still on the table.
 - This README — the full feature reference.
 
 ## The Problem
@@ -331,6 +333,63 @@ Custom PubSub name:
 config = Arena.setup(context)
 |> Arena.Integrations.PubSub.setup(name: MyCustomPubSub)
 ```
+
+### Mox
+
+Carry the test's `:private`-mode Mox ownership into Arena-wrapped processes, so
+mocked behaviours work from spawned GenServers/Tasks at `async: true` (no
+`set_mox_global`):
+
+```elixir
+config
+|> Arena.Integrations.Ecto.setup(repo: MyApp.Repo)
+|> Arena.Integrations.Mox.setup(mocks: [MyApp.HTTPMock, MyApp.ClockMock])
+```
+
+### Telemetry
+
+Per-test capture of `:telemetry` events (owner-scoped handler, detached on exit):
+
+```elixir
+Arena.Integrations.Telemetry.capture([[:my_app, :worker, :done]])
+# ...
+assert_receive {:telemetry, [:my_app, :worker, :done], %{count: 1}, _meta}
+```
+
+### Phoenix (LiveView / Channels)
+
+`Arena.Phoenix` delivers the per-test config into the **connected** LiveView /
+Channel process and resolves a per-test PubSub server, so LiveView/Channel tests
+isolate cleanly at `async: true`. See
+[docs/testing-phoenix.md](docs/testing-phoenix.md):
+
+```elixir
+# ConnCase:  conn = Arena.Phoenix.put_config(build_conn(), config)
+# live_view macro:  on_mount Arena.Phoenix.LiveView
+# a PubSub facade:  defmodule MyApp.PubSub, do: use Arena.Phoenix.PubSub
+```
+
+### Credo checks
+
+Enforce correct Arena usage in CI (compiled only when Credo is present). Add to
+`.credo.exs`:
+
+```elixir
+{Arena.Credo.Check.GenServerUsesArenaProcess, []},
+{Arena.Credo.Check.NoTestProcessSleep, []},
+{Arena.Credo.Check.NoGlobalMox, []},
+{Arena.Credo.Check.NoApplicationPutEnvInTest, []}
+```
+
+### Arena.Case (a base DataCase)
+
+`Arena.Case.setup_isolation/2` + `wrap!/2` own the load-bearing DataCase pipeline
+(store-before-spawn, the `:arena_global` tripwire). See `Arena.Case` for the
+~10-line `DataCase`.
+
+See [docs/integrations-roadmap.md](docs/integrations-roadmap.md) for the full
+list and what's still on the table, and [docs/http-boundary.md](docs/http-boundary.md)
+for what to do where Arena can't reach.
 
 ## Advanced Features
 
