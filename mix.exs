@@ -23,7 +23,7 @@ defmodule Arena.MixProject do
 
   defp package do
     [
-      files: ~w(lib .formatter.exs mix.exs README.md),
+      files: ~w(lib docs .formatter.exs mix.exs README.md AGENTS.md llms.txt CHANGELOG.md),
       licenses: ["MIT"],
       links: %{}
     ]

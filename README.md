@@ -4,6 +4,21 @@
 
 Arena (Latin for "sand", from Roman amphitheater floors) provides a sandbox for testing process-heavy Elixir applications asynchronously. It solves the fundamental problem of maintaining database transaction isolation when your code spawns GenServers, supervisors, or tasks.
 
+## Documentation
+
+- **[`llms.txt`](llms.txt)** — start here if you're an agent (or want the
+  one-page map): the mental model, the critical gotchas that cause *silent*
+  failures, the core API, and links into everything below.
+- **[`AGENTS.md`](AGENTS.md)** — the mental model in depth (Config / Wrapped /
+  Process), patterns, and anti-patterns.
+- **[`docs/testing-phoenix.md`](docs/testing-phoenix.md)** — testing **LiveView &
+  Channels** with Arena: how the per-test config reaches the *connected* process,
+  and why naive `Phoenix.PubSub` isolation silently loses messages.
+- **[`docs/integrations-roadmap.md`](docs/integrations-roadmap.md)** — existing
+  integrations and proposals for new ones (Mox bridge, Phoenix seams, Credo
+  checks, …).
+- This README — the full feature reference.
+
 ## The Problem
 
 In Elixir, async tests typically use database transactions for isolation via `Ecto.Adapters.SQL.Sandbox`. However, when your application spawns new processes (GenServers, supervisors, tasks), these processes don't share the test's database transaction.

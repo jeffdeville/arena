@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Docs: `llms.txt` (an agent-facing entry point following the llmstxt.org
+  convention), `docs/testing-phoenix.md` (testing LiveView & Channels with Arena
+  — the connected-process config-delivery recipe and PubSub-isolation pitfalls),
+  and `docs/integrations-roadmap.md` (existing integrations + proposals: a Mox
+  bridge, Phoenix on_mount seams, Credo checks, a base case template, …). Wired
+  into the hex package `files` and linked from the README.
 - `ArenaApplication` — an async-safe drop-in for `Application.get_env/3`. Reads a
   per-test override from the current `Arena.Config` first (namespaced by
   `{app, key}`, mirroring `Application`'s own env), falling back to

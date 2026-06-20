@@ -1,0 +1,107 @@
+# Arena
+
+> Arena is dependency injection for **test infrastructure**. It gives each ExUnit
+> test its own isolated copy of the process-based infrastructure your app shares
+> in production — the Ecto sandbox connection, a `Phoenix.PubSub` server, the
+> process Registry namespace, application-env values — so process-heavy apps run
+> `async: true` with zero crosstalk. The same production code routes to per-test
+> instances through a process-dictionary config (`via_tuple()`), with **no code
+> changes between prod and test**.
+
+The problem Arena solves: spawned processes (GenServers, Tasks, supervised
+children, LiveView/Channel processes) do **not** inherit a test's sandbox
+transaction or per-test infrastructure. With Arena you build a per-test
+`Arena.Config`, `Arena.wrap/2` it into child specs, and `use Arena.Process` /
+`use Arena.Supervisor` so each process unwraps the config, stores it in its
+process dictionary, and runs integration callbacks (e.g. `Ecto.Sandbox.allow`)
+at `init`. Client calls use `via_tuple()`, which reads the config and routes to
+the per-test instance in tests, or the global one in prod.
+
+## Read in this order
+
+- [AGENTS.md](AGENTS.md): the mental model — the three pieces (Config / Wrapped /
+  Process), how config flows down the process tree, the core patterns and
+  anti-patterns, and a quick reference. **Start here.**
+- [README.md](README.md): the full feature guide — installation, setup, every
+  usage pattern, integrations, advanced features, troubleshooting.
+- [docs/testing-phoenix.md](docs/testing-phoenix.md): **the non-obvious part** —
+  how a per-test config reaches the *connected* LiveView / Channel process, why
+  naive PubSub isolation silently loses messages, and the on_mount/connect_info
+  recipe. Read this before isolating PubSub in a Phoenix app.
+- [docs/integrations-roadmap.md](docs/integrations-roadmap.md): existing
+  integrations and concrete proposals for new ones (Mox bridge, Phoenix
+  on_mount helpers, Credo checks, a base case template, …).
+
+## Critical facts an agent MUST know (each one causes SILENT failures if missed)
+
+- **Wrap every spawn.** `start_supervised!({Server, Arena.wrap(config, args)})`,
+  never `{Server, args}`. An unwrapped child starts under the shared
+  `:arena_global` owner and silently cross-talks — no error is raised. Same for
+  `DynamicSupervisor.start_child` and supervisor children.
+- **`Arena.Config.store/1` must run before any spawn.** Store-after-spawn is the
+  most common silent-crosstalk cause; the test process itself needs the config
+  stored so its own `via_tuple()` calls resolve to the per-test instance.
+- **Arena breaks at a real HTTP/transport boundary.** Process-dictionary config
+  cannot cross a process that doesn't inherit the dictionary (a real Bandit/
+  Cowboy worker, a browser WebSocket in Wallaby/Playwright). For those, fall back
+  to `Application.put_env` + `async: false`, or thread state via the
+  `Phoenix.Ecto.SQL.Sandbox` user-agent-metadata pattern. **But** `Phoenix.ConnTest`,
+  `Phoenix.LiveViewTest`, and `Phoenix.ChannelTest` all run **in-process** (no real
+  transport), so they ARE Arena-eligible and run `async: true` — see
+  [docs/testing-phoenix.md](docs/testing-phoenix.md).
+- **Arena and Mox are complementary, not alternatives.** Use Arena for internal
+  process collaborators (start a real, isolated copy); use Mox for the external
+  HTTP-service boundary (a behaviour contract). Prefer Arena over mocking an
+  internal GenServer.
+- **A connected LiveView/Channel process is reachable.** It runs under the ExUnit
+  test supervisor and has the **test pid in its `$callers`** (not `$ancestors`);
+  its `connect_info` in tests is the pruned `Plug.Conn` (with `conn.private`
+  intact). An `on_mount` hook can therefore store the test's config in it — this
+  is exactly how the Ecto sandbox grants the connected LV DB access. See the
+  Phoenix doc.
+- **PubSub isolation is all-or-nothing per test.** A per-test PubSub server only
+  isolates if *every* broadcaster AND subscriber in the test resolves the *same*
+  per-test server. One broadcaster that resolves the global server (an unwrapped
+  process, or a missed call site) silently drops the message. Resolve the server
+  name from `Arena.Config` everywhere, with a `$callers` fallback.
+
+## Core API
+
+- `Arena.setup/1,2` → build a per-test `Arena.Config` from the ExUnit context
+  (unique owner from `{module, test}`).
+- `Arena.wrap/2` → `%Arena.Wrapped{config, input}` envelope for a child spec.
+- `Arena.Config`: `new/1,2`, `store/1`, `current/0`, `get/1,2`, `put/2,3`,
+  `add_callback/1,2`, `execute_callbacks/1`, `child/2`. Read context with
+  `get/2`; it raises on absent keys, so for optional keys read
+  `Arena.Config.current().context` with `Map.fetch/2`.
+- `use Arena.Process` (GenServers): injects `start_link/1`, `via_tuple/0`,
+  `to_process_key/1` callback, `get_pid/1`, `alive?/1`. Override `to_process_key/1`
+  (`__MODULE__` for singletons; `{__MODULE__, id}` for keyed). Client calls use
+  `via_tuple()`, never `__MODULE__`. Keep `handle_*` callbacks free of Arena.
+- `use Arena.Supervisor` (Supervisors): wrap children manually with
+  `Arena.wrap(Arena.Config.current(), args)` in `init`.
+- `Arena.Task.async/1,2`, `Arena.Task.async_stream/3` → tasks that carry the
+  config (DB access, etc.), replacing `Task.async`.
+
+## Integrations
+
+- `Arena.Integrations.Ecto.setup(config, repo: Repo)` → adds the callback that
+  `Ecto.Adapters.SQL.Sandbox.allow`s each wrapped child onto the test's
+  connection. First thing to check on `DBConnection.OwnershipError`.
+- `Arena.Integrations.PubSub.setup(config, opts)` → starts a per-test
+  `Phoenix.PubSub` server (`start_supervised!`) and stores its name at the
+  `:pubsub_name` context key. Resolve the server from config in your
+  broadcast/subscribe calls.
+- `ArenaApplication.get_env/3` (+ `fetch_env/2`, `fetch_env!/2`, `put_env/3,4`,
+  `merge_env/3,4`) → async-safe drop-in for `Application.get_env/3`. Reads a
+  per-test override from `Arena.Config` (namespaced by `{app, key}`), else the
+  application env. Replaces `Application.put_env`-in-test (and the `async: false`
+  it forces). `merge_env` does a surgical partial override of a map/keyword value.
+
+## Optional
+
+- [CHANGELOG.md](CHANGELOG.md): release notes.
+- `test/arena/*_test.exs`: executable usage examples for every module/integration.
+- Diagnostics: `ArenaInspector.assert_arena_configured!()` and an `ArenaDebugger`
+  (`has_arena_config?/1`, `check_process_registration/1`) — port into your
+  `test/support` to debug "no process" / crosstalk issues.
