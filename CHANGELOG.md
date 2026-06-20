@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `ArenaApplication` — an async-safe drop-in for `Application.get_env/3`. Reads a
+  per-test override from the current `Arena.Config` first (namespaced by
+  `{app, key}`, mirroring `Application`'s own env), falling back to
+  `Application.get_env/3`. Behaviour-neutral in production (no config stored), so
+  it replaces the global `Application.put_env/3`-in-test pattern — and the
+  `async: false` it forces — with a process-local override carried into
+  Arena-wrapped consumers via `Arena.wrap/2`. Also provides `fetch_env/2`,
+  `fetch_env!/2`, and `put_env/3,4`.
+  - `merge_env/3,4` applies a **surgical** partial override of a map/keyword
+    value: it shallow-merges a delta into the current effective value (override →
+    app env), so a test states only the keys it changes instead of restating the
+    whole value.
 - Initial implementation of Arena process isolation system
 - Core modules:
   - `Arena.Config` - Configuration blueprint for test infrastructure
