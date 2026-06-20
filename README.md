@@ -232,6 +232,52 @@ end, max_concurrency: 10)
 |> Enum.to_list()
 ```
 
+### Application Env (`ArenaApplication`)
+
+`ArenaApplication.get_env/3` is an async-safe drop-in for `Application.get_env/3`.
+It reads a per-test override from the current `Arena.Config` first (namespaced by
+`{app, key}`, just like `Application`'s own env), and falls back to
+`Application.get_env/3` otherwise. In production no config is stored, so it is
+*exactly* `Application.get_env/3` — making it the seam that lets you retire
+`Application.put_env/3`-in-`setup` (and the `async: false` it forces).
+
+```elixir
+# Library / production read — swap this:
+#   Application.get_env(:my_app, :http_client, MyApp.HTTP.Real)
+# for this:
+ArenaApplication.get_env(:my_app, :http_client, MyApp.HTTP.Real)
+
+# Test — process-local, async-safe (replaces Application.put_env/3):
+setup %{config: config} do
+  config = ArenaApplication.put_env(config, :my_app, :http_client, MyApp.HTTP.Mock)
+  Arena.Config.store(config)
+  :ok
+end
+```
+
+The override travels into Arena-wrapped consumers (`Arena.Process` GenServers,
+`Arena.Task`s) via `Arena.wrap/2`, so the swap holds across the whole process
+tree the test spawns — with no global mutation and no `async: false`.
+
+For map/keyword values, `merge_env/3` applies a **surgical** partial override —
+the test states only the delta and the rest of the value keeps its resolved
+production defaults:
+
+```elixir
+# Replaces the whole map (every key must be restated):
+ArenaApplication.put_env(:my_app, :provider_impls, %{
+  none: Provider.None, google_calendar: ProviderMock, jobber: Provider.Jobber
+})
+
+# Surgically overrides one key; none/jobber keep their resolved values:
+ArenaApplication.merge_env(:my_app, :provider_impls, google_calendar: ProviderMock)
+```
+
+`merge_env/3` shallow-merges into the *effective* value (override → app env), so
+the unchanged keys must be resolvable — keep the production default in the
+application environment (`config :my_app, :provider_impls, %{…}`) rather than as a
+literal buried in the reader.
+
 ## Integrations
 
 ### Ecto
